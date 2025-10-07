@@ -119,7 +119,7 @@ class BullServer {
         return res.status(503).json({ error: 'Servicio no disponible' });
       }
 
-      res.json(this.socketService.getStats());
+      return res.json(this.socketService.getStats());
     });
 
     // Servir archivos estáticos del frontend (en producción)

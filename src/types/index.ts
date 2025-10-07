@@ -154,7 +154,12 @@ export interface ServerToClientEvents {
     options: RoundOption[];
     timeRemaining: number;
   }) => void;
-  round_results: (data: { results: RoundResult; nextRound?: number }) => void;
+  round_results: (data: { 
+    results: RoundResult; 
+    nextRound?: number;
+    options?: RoundOption[];
+    votes?: { [playerId: string]: string };
+  }) => void;
 
   // Eventos de estado
   game_state_updated: (data: { gameState: BullGameState }) => void;
