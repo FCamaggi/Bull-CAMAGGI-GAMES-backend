@@ -10,7 +10,7 @@ export const DEFAULT_FRONTEND_URL = 'http://localhost:3000';
  * Configuración por defecto del juego
  */
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
-  maxRounds: 5,
+  maxRounds: 8, // 8 preguntas de Fabrizio
   answerTimeSeconds: 30,
   voteTimeSeconds: 20,
   pointsCorrectAnswer: 100,

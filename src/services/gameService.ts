@@ -15,58 +15,57 @@ import { ERROR_CODES, ROUND_OPTIONS_COUNT } from '../utils/constants';
 import { PlayerSelector } from '../utils/playerSelector';
 
 /**
- * Preguntas predefinidas para el juego Bull
+ * Preguntas predefinidas para el juego Bull - Edición Fabrizio
+ * Orden fijo: 8 rondas específicas
  */
 const SAMPLE_QUESTIONS = [
   {
-    question: '¿Cuál es la capital de Francia?',
-    correctAnswer: 'París',
-    incorrectAnswer: 'Londres',
+    question: '¿Qué apodo tenía Fabrizio cuando chico?',
+    correctAnswer: 'Fay',
+    incorrectAnswer: 'Caballero',
+    suggestedFormat: 'Escribe el apodo (ej: "Fay")',
   },
   {
-    question: '¿En qué año se fundó Facebook?',
-    correctAnswer: '2004',
-    incorrectAnswer: '2006',
+    question: '¿A qué edad tomó por primera vez Fabrizio?',
+    correctAnswer: '18',
+    incorrectAnswer: '16',
+    suggestedFormat: 'Solo el número (ej: "18")',
   },
   {
-    question: '¿Cuál es el océano más grande del mundo?',
-    correctAnswer: 'Océano Pacífico',
-    incorrectAnswer: 'Océano Atlántico',
+    question: '¿Cuál es el segundo nombre de Fabrizio?',
+    correctAnswer: 'Giordano',
+    incorrectAnswer: 'Lorenzo',
+    suggestedFormat: 'Solo el nombre (ej: "Giordano")',
   },
   {
-    question: "¿Quién escribió 'Don Quijote de la Mancha'?",
-    correctAnswer: 'Miguel de Cervantes',
-    incorrectAnswer: 'Federico García Lorca',
+    question: '¿Cómo se llama el abuelo de Fabrizio?',
+    correctAnswer: 'Francisco',
+    incorrectAnswer: 'Giordano',
+    suggestedFormat: 'Solo el nombre (ej: "Francisco")',
   },
   {
-    question: '¿Cuál es el planeta más cercano al Sol?',
-    correctAnswer: 'Mercurio',
-    incorrectAnswer: 'Venus',
+    question: '¿A qué edad sacó la licencia de conducir Fabrizio?',
+    correctAnswer: '24',
+    incorrectAnswer: '19',
+    suggestedFormat: 'Solo el número (ej: "24")',
   },
   {
-    question: '¿En qué año terminó la Segunda Guerra Mundial?',
-    correctAnswer: '1945',
-    incorrectAnswer: '1944',
+    question: '¿Cuál es la comida favorita de Fabrizio?',
+    correctAnswer: 'Lasaña',
+    incorrectAnswer: 'Pastel de choclo',
+    suggestedFormat: 'Nombre del plato (ej: "Lasaña")',
   },
   {
-    question: '¿Cuál es el río más largo del mundo?',
-    correctAnswer: 'Río Nilo',
-    incorrectAnswer: 'Río Amazonas',
+    question: '¿En qué comuna nació Fabrizio?',
+    correctAnswer: 'Providencia',
+    incorrectAnswer: 'Recoleta',
+    suggestedFormat: 'Nombre de la comuna (ej: "Providencia")',
   },
   {
-    question: "¿Quién pintó 'La Mona Lisa'?",
-    correctAnswer: 'Leonardo da Vinci',
-    incorrectAnswer: 'Pablo Picasso',
-  },
-  {
-    question: '¿Cuál es el elemento químico más abundante en el universo?',
-    correctAnswer: 'Hidrógeno',
-    incorrectAnswer: 'Oxígeno',
-  },
-  {
-    question: '¿En qué ciudad se encuentran las Torres Petronas?',
-    correctAnswer: 'Kuala Lumpur',
-    incorrectAnswer: 'Singapur',
+    question: '¿Cuántas veces ha viajado en avión Fabrizio?',
+    correctAnswer: '0',
+    incorrectAnswer: '2',
+    suggestedFormat: 'Solo el número (ej: "0")',
   },
 ];
 
@@ -143,18 +142,12 @@ export class GameService {
       );
     }
 
-    // Seleccionar pregunta que no haya sido usada
-    const usedQuestions = lobby.gameState.rounds.map((r) => r.question);
-    const availableQuestions = SAMPLE_QUESTIONS.filter(
-      (q) => !usedQuestions.includes(q.question)
-    );
-
-    // Si no hay preguntas disponibles, reiniciar el pool
-    const questionPool =
-      availableQuestions.length > 0 ? availableQuestions : SAMPLE_QUESTIONS;
-
-    const questionData =
-      questionPool[Math.floor(Math.random() * questionPool.length)]!;
+    // Seleccionar pregunta en orden fijo (1-8)
+    // roundNumber es 1-indexed, array es 0-indexed
+    const questionIndex = roundNumber - 1;
+    
+    // Si se sale del rango, usar la última pregunta
+    const questionData = SAMPLE_QUESTIONS[questionIndex] || SAMPLE_QUESTIONS[SAMPLE_QUESTIONS.length - 1];
 
     // Seleccionar jugadores para esta ronda (excluyendo al host)
     const hostId = lobby.hostId;
@@ -173,6 +166,7 @@ export class GameService {
       question: questionData.question,
       correctAnswer: questionData.correctAnswer,
       incorrectAnswer: questionData.incorrectAnswer,
+      suggestedFormat: questionData.suggestedFormat,
       selectedPlayers: {
         blue: bluePlayer,
         red: redPlayer,
@@ -236,7 +230,35 @@ export class GameService {
       );
     }
 
-    currentRound.playerAnswers[playerId] = answer.trim();
+    // Validar que la respuesta no sea igual a la correcta o incorrecta (case insensitive)
+    const trimmedAnswer = answer.trim();
+    const correctAnswer = currentRound.correctAnswer.toLowerCase();
+    const incorrectAnswer = currentRound.incorrectAnswer.toLowerCase();
+    const userAnswer = trimmedAnswer.toLowerCase();
+
+    if (userAnswer === correctAnswer) {
+      throw new GameError(
+        'Tu respuesta no puede ser igual a la respuesta correcta',
+        ERROR_CODES.VALIDATION_ERROR
+      );
+    }
+
+    if (userAnswer === incorrectAnswer) {
+      throw new GameError(
+        'Tu respuesta no puede ser igual a la respuesta incorrecta predefinida',
+        ERROR_CODES.VALIDATION_ERROR
+      );
+    }
+
+    // Validar que la respuesta no esté vacía
+    if (trimmedAnswer.length === 0) {
+      throw new GameError(
+        'La respuesta no puede estar vacía',
+        ERROR_CODES.VALIDATION_ERROR
+      );
+    }
+
+    currentRound.playerAnswers[playerId] = trimmedAnswer;
   }
 
   /**

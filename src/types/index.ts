@@ -77,6 +77,7 @@ export interface BullRound {
   question: string; // Pregunta de la ronda
   correctAnswer: string; // Respuesta correcta
   incorrectAnswer: string; // Respuesta incorrecta (distractor base)
+  suggestedFormat?: string; // Formato sugerido para la respuesta
   selectedPlayers: {
     // Jugadores seleccionados para esta ronda
     blue: Player;
