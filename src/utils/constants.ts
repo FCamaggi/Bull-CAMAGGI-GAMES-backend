@@ -39,7 +39,7 @@ export const ROUND_OPTIONS_COUNT = 4;
  */
 export const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
 export const HEARTBEAT_INTERVAL_MS = 30 * 1000; // 30 segundos
-export const RECONNECT_WINDOW_MS = 60 * 1000; // 1 minuto
+export const RECONNECT_WINDOW_MS = 5 * 60 * 1000; // 5 minutos para reconectarse
 
 /**
  * Códigos de error

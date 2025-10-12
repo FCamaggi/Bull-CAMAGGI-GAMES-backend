@@ -98,6 +98,9 @@ export class SocketService {
     socket.on('reconnect_attempt', (data) =>
       this.handleReconnectAttempt(socket, data)
     );
+    socket.on('reconnect_by_name', (data) =>
+      this.handleReconnectByName(socket, data)
+    );
 
     // Manejo de desconexión
     socket.on('disconnect', (reason) => {
@@ -601,6 +604,79 @@ export class SocketService {
   }
 
   /**
+   * Intento de reconexión por nombre de jugador
+   */
+  private handleReconnectByName(
+    socket: Socket,
+    data: { playerName: string; lobbyCode: string }
+  ): void {
+    try {
+      const { playerName, lobbyCode } = data;
+
+      const lobby = this.lobbyService.getLobby(lobbyCode);
+      const player = lobby.players.find(
+        (p) => p.name.toLowerCase() === playerName.toLowerCase()
+      );
+
+      if (!player) {
+        socket.emit('error', { 
+          message: 'No se encontró un jugador con ese nombre en el lobby',
+          code: ERROR_CODES.PLAYER_NOT_FOUND
+        });
+        return;
+      }
+
+      // Si el jugador ya está conectado con otro socket, desconectar el anterior
+      if (player.isConnected && player.socketId) {
+        const previousSocket = this.io.sockets.sockets.get(player.socketId);
+        if (previousSocket) {
+          previousSocket.emit('error', { 
+            message: 'Te has conectado desde otro dispositivo',
+            code: ERROR_CODES.PLAYER_NOT_FOUND
+          });
+          previousSocket.disconnect(true);
+        }
+        // Limpiar sesión anterior
+        this.sessions.delete(player.socketId);
+      }
+
+      // Actualizar socket del jugador
+      this.lobbyService.updatePlayerSocket(lobbyCode, player.id, socket.id);
+
+      // Crear nueva sesión
+      this.sessions.set(socket.id, {
+        playerId: player.id,
+        lobbyCode,
+        joinedAt: new Date(),
+        lastSeen: new Date(),
+      });
+
+      // Unir al room
+      socket.join(lobbyCode);
+
+      // Notificar a otros jugadores que el jugador se reconectó
+      socket.to(lobbyCode).emit('player_reconnected', { 
+        playerId: player.id,
+        playerName: player.name
+      });
+
+      // Enviar estado actual al jugador reconectado
+      socket.emit('reconnected', {
+        lobby,
+        gameState: lobby.gameState,
+        playerId: player.id,
+      });
+
+      // Notificar actualización del lobby
+      this.io.to(lobbyCode).emit('lobby_updated', { lobby });
+
+      console.log(`Jugador ${player.name} (${player.id}) reconectado por nombre al lobby ${lobbyCode}`);
+    } catch (error) {
+      this.handleError(socket, error);
+    }
+  }
+
+  /**
    * Maneja la desconexión de un socket
    */
   private handleDisconnection(socket: Socket): void {
@@ -628,7 +704,7 @@ export class SocketService {
         if (currentSession && currentSession.playerId === session.playerId) {
           this.sessions.delete(socket.id);
         }
-      }, 60000); // 1 minuto para reconectarse
+      }, 300000); // 5 minutos para reconectarse
     } catch (error) {
       console.error('Error manejando desconexión:', error);
     }

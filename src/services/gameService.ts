@@ -23,49 +23,49 @@ const SAMPLE_QUESTIONS = [
     question: '¿Qué apodo tenía Fabrizio cuando chico?',
     correctAnswer: 'Fay',
     incorrectAnswer: 'Caballero',
-    suggestedFormat: 'Escribe el apodo (ej: "Fay")',
+    suggestedFormat: 'Escribe el apodo con mayúscula',
   },
   {
     question: '¿A qué edad tomó por primera vez Fabrizio?',
     correctAnswer: '18',
     incorrectAnswer: '16',
-    suggestedFormat: 'Solo el número (ej: "18")',
+    suggestedFormat: 'Solo el número',
   },
   {
     question: '¿Cuál es el segundo nombre de Fabrizio?',
     correctAnswer: 'Giordano',
     incorrectAnswer: 'Lorenzo',
-    suggestedFormat: 'Solo el nombre (ej: "Giordano")',
+    suggestedFormat: 'Solo el nombre con mayúscula',
   },
   {
-    question: '¿Cómo se llama el abuelo de Fabrizio?',
+    question: '¿Cómo se llama el abuelo paterno de Fabrizio?',
     correctAnswer: 'Francisco',
     incorrectAnswer: 'Giordano',
-    suggestedFormat: 'Solo el nombre (ej: "Francisco")',
+    suggestedFormat: 'Solo el nombre con mayúscula',
   },
   {
     question: '¿A qué edad sacó la licencia de conducir Fabrizio?',
     correctAnswer: '24',
     incorrectAnswer: '19',
-    suggestedFormat: 'Solo el número (ej: "24")',
+    suggestedFormat: 'Solo el número',
   },
   {
     question: '¿Cuál es la comida favorita de Fabrizio?',
     correctAnswer: 'Lasaña',
     incorrectAnswer: 'Pastel de choclo',
-    suggestedFormat: 'Nombre del plato (ej: "Lasaña")',
+    suggestedFormat: 'Nombre del plato con mayúscula',
   },
   {
     question: '¿En qué comuna nació Fabrizio?',
     correctAnswer: 'Providencia',
     incorrectAnswer: 'Recoleta',
-    suggestedFormat: 'Nombre de la comuna (ej: "Providencia")',
+    suggestedFormat: 'Nombre de la comuna con mayúscula',
   },
   {
     question: '¿Cuántas veces ha viajado en avión Fabrizio?',
     correctAnswer: '0',
     incorrectAnswer: '2',
-    suggestedFormat: 'Solo el número (ej: "0")',
+    suggestedFormat: 'Solo el número',
   },
 ];
 
@@ -135,7 +135,7 @@ export class GameService {
       );
     }
 
-    if (roundNumber > lobby.settings.maxRounds) {
+    if (roundNumber > lobby.settings.maxRounds || roundNumber < 1) {
       throw new GameError(
         'Número de ronda inválido',
         ERROR_CODES.VALIDATION_ERROR
@@ -145,9 +145,11 @@ export class GameService {
     // Seleccionar pregunta en orden fijo (1-8)
     // roundNumber es 1-indexed, array es 0-indexed
     const questionIndex = roundNumber - 1;
-    
+
     // Si se sale del rango, usar la última pregunta
-    const questionData = SAMPLE_QUESTIONS[questionIndex] || SAMPLE_QUESTIONS[SAMPLE_QUESTIONS.length - 1];
+    const questionData =
+      SAMPLE_QUESTIONS[questionIndex] ||
+      SAMPLE_QUESTIONS[SAMPLE_QUESTIONS.length - 1];
 
     // Seleccionar jugadores para esta ronda (excluyendo al host)
     const hostId = lobby.hostId;
@@ -593,7 +595,7 @@ export class GameService {
    */
   isGameFinished(lobby: Lobby): boolean {
     if (!lobby.gameState) return false;
-    return lobby.gameState.currentRound >= lobby.settings.maxRounds;
+    return lobby.gameState.currentRound > lobby.settings.maxRounds;
   }
 
   /**

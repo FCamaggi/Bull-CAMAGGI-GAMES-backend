@@ -129,6 +129,7 @@ export interface ClientToServerEvents {
   // Eventos de conexión
   ping: () => void;
   reconnect_attempt: (data: { playerId: string; lobbyCode: string }) => void;
+  reconnect_by_name: (data: { playerName: string; lobbyCode: string }) => void;
 }
 
 // Eventos WebSocket del servidor al cliente
@@ -155,8 +156,8 @@ export interface ServerToClientEvents {
     options: RoundOption[];
     timeRemaining: number;
   }) => void;
-  round_results: (data: { 
-    results: RoundResult; 
+  round_results: (data: {
+    results: RoundResult;
     nextRound?: number;
     options?: RoundOption[];
     votes?: { [playerId: string]: string };
@@ -172,7 +173,8 @@ export interface ServerToClientEvents {
 
   // Eventos de conexión
   pong: () => void;
-  reconnected: (data: { lobby: Lobby; gameState?: BullGameState }) => void;
+  reconnected: (data: { lobby: Lobby; gameState?: BullGameState; playerId?: string }) => void;
+  player_reconnected: (data: { playerId: string; playerName: string }) => void;
 }
 
 // Resultado de una ronda

@@ -12,7 +12,13 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix"
   },
-  "keywords": ["bull", "game", "socket.io", "realtime", "trivia"],
+  "keywords": [
+    "bull",
+    "game",
+    "socket.io",
+    "realtime",
+    "trivia"
+  ],
   "author": "Tu nombre",
   "license": "MIT",
   "dependencies": {

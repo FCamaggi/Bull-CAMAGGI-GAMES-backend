@@ -36,6 +36,9 @@ export class PlayerSelector {
     });
 
     this.updateFactors();
+    
+    console.log('🎯 PlayerSelector inicializado:');
+    console.log('📊 Estadísticas iniciales:', this.getStats());
   }
 
   /**
@@ -108,6 +111,8 @@ export class PlayerSelector {
     // Recalcular factores después de la selección
     this.updateFactors();
 
+    console.log('📊 Estadísticas después de selección:', this.getStats());
+
     return { bluePlayer, redPlayer };
   }
 
@@ -142,13 +147,23 @@ export class PlayerSelector {
       probability: pf.factor / totalFactor,
     }));
 
+    // Log para debugging del algoritmo de selección
+    console.log(`🎯 PlayerSelector - Selección para equipo ${team}:`);
+    probabilities.forEach((prob, i) => {
+      const participation = this.participationHistory.get(prob.player.id);
+      console.log(`  ${i + 1}. ${prob.player.name}: ${(prob.probability * 100).toFixed(1)}% (jugó ${participation?.timesPlayed || 0} veces, factor: ${prob.factor})`);
+    });
+
     // Selección por ruleta (weighted random selection)
     const random = Math.random();
     let accumulator = 0;
 
+    console.log(`🎲 Random generado: ${(random * 100).toFixed(1)}%`);
+    
     for (const prob of probabilities) {
       accumulator += prob.probability;
       if (random <= accumulator) {
+        console.log(`✅ Seleccionado: ${prob.player.name} (acumulado: ${(accumulator * 100).toFixed(1)}%)`);
         return prob.player;
       }
     }
@@ -190,26 +205,18 @@ export class PlayerSelector {
 
   /**
    * Calcula el factor de probabilidad individual de un jugador
+   * Sistema simplificado: jugadores que no han jugado tienen mayor peso
    */
   private calculatePlayerFactor(participation: PlayerParticipation): number {
-    // Factor base: jugadores que nunca han jugado tienen prioridad máxima
+    // Jugadores que nunca han jugado tienen peso completo (1.0)
     if (participation.lastRoundPlayed === -1) {
-      return 2.0; // Doble probabilidad para jugadores nuevos
+      return 1.0;
     }
 
-    // Factor por recencia: cuánto tiempo hace que no juega
-    const roundsSinceLastPlay =
-      this.currentRound - participation.lastRoundPlayed;
-    const recencyFactor = Math.min(2.0, 1.0 + roundsSinceLastPlay * 0.2);
-
-    // Factor por frecuencia: penalizar jugadores que han jugado mucho
-    const avgTimesPlayed = this.getAverageTimesPlayed();
-    const frequencyRatio =
-      participation.timesPlayed / Math.max(avgTimesPlayed, 1);
-    const frequencyFactor = Math.max(0.1, 1.0 - (frequencyRatio - 1) * 0.3);
-
-    // Combinar factores
-    return recencyFactor * frequencyFactor;
+    // Jugadores que ya jugaron tienen peso reducido (0.5)
+    // Esto significa que si tienes 5 jugadores: 4 con peso 1.0 y 1 con peso 0.5
+    // Las probabilidades serían: 1.0/(4*1.0 + 1*0.5) = 1.0/4.5 ≈ 22.2% vs 0.5/4.5 ≈ 11.1%
+    return 0.5;
   }
 
   /**
@@ -226,30 +233,27 @@ export class PlayerSelector {
 
   /**
    * Normaliza los factores para mantener proporciones adecuadas
+   * En el sistema simplificado, no necesitamos normalización compleja
    */
   private normalizeFactors(): void {
-    const allParticipations = Array.from(this.participationHistory.values());
-    const totalFactor = allParticipations.reduce((sum, p) => sum + p.factor, 0);
-
-    if (totalFactor > 0) {
-      const normalizer = allParticipations.length / totalFactor;
-      allParticipations.forEach((p) => {
-        p.factor = Math.max(0.1, p.factor * normalizer); // Mínimo 10%
-      });
-    }
+    // En el sistema simplificado, los factores ya están definidos correctamente
+    // No necesitamos normalización adicional
   }
 
   /**
    * Obtiene estadísticas del selector (para debugging)
    */
   getStats(): any {
+    const allParticipations = Array.from(this.participationHistory.values());
+    const totalFactor = allParticipations.reduce((sum, p) => sum + p.factor, 0);
+    
     const stats = Array.from(this.participationHistory.entries()).map(
       ([playerId, participation]) => ({
         playerId,
         timesPlayed: participation.timesPlayed,
         lastRoundPlayed: participation.lastRoundPlayed,
         factor: participation.factor,
-        probability: participation.factor,
+        probability: totalFactor > 0 ? (participation.factor / totalFactor * 100).toFixed(1) + '%' : '0%',
       })
     );
 
@@ -258,6 +262,7 @@ export class PlayerSelector {
       players: stats,
       totalPlayers: stats.length,
       averageTimesPlayed: this.getAverageTimesPlayed(),
+      algorithm: 'simplified', // Indicador del algoritmo usado
     };
   }
 
