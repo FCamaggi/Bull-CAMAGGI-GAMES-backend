@@ -77,6 +77,7 @@ export class SocketService {
     // Eventos de lobby
     socket.on('create_lobby', (data) => this.handleCreateLobby(socket, data));
     socket.on('join_lobby', (data) => this.handleJoinLobby(socket, data));
+    socket.on('rejoin_lobby', (data) => this.handleRejoinLobby(socket, data));
     socket.on('leave_lobby', () => this.handleLeaveLobby(socket));
     socket.on('select_team', (data) => this.handleSelectTeam(socket, data));
     socket.on('ready_toggle', () => this.handleReadyToggle(socket));
@@ -203,6 +204,97 @@ export class SocketService {
       }
 
       console.log(`${playerName} se unió al lobby ${lobby.code}`);
+    } catch (error) {
+      this.handleError(socket, error);
+    }
+  }
+
+  /**
+   * Un jugador reconecta a un lobby existente
+   */
+  private async handleRejoinLobby(
+    socket: Socket,
+    data: { code: string; playerId: string }
+  ): Promise<void> {
+    try {
+      const { code, playerId } = data;
+
+      if (!code || !playerId) {
+        socket.emit('error', {
+          message: 'Código de lobby y ID de jugador son obligatorios',
+          code: ERROR_CODES.VALIDATION_ERROR,
+        });
+        return;
+      }
+
+      const lobbyCode = code.trim().toUpperCase();
+      const lobby = this.lobbyService.getLobby(lobbyCode);
+
+      // Verificar si es el host
+      const isHost = lobby.hostId === playerId;
+      
+      if (isHost) {
+        // Actualizar socket ID del host
+        lobby.hostSocketId = socket.id;
+      } else {
+        // Verificar que el jugador existe en el lobby
+        const player = lobby.players.find((p) => p.id === playerId);
+        if (!player) {
+          socket.emit('error', {
+            message: 'Jugador no encontrado en el lobby',
+            code: ERROR_CODES.PLAYER_NOT_FOUND,
+          });
+          return;
+        }
+
+        // Actualizar el socket ID del jugador
+        this.lobbyService.updatePlayerSocket(lobbyCode, playerId, socket.id);
+      }
+
+      // Crear/actualizar sesión
+      this.sessions.set(socket.id, {
+        playerId,
+        lobbyCode: lobby.code,
+        joinedAt: new Date(),
+        lastSeen: new Date(),
+      });
+
+      // Unir al room del lobby
+      await socket.join(lobby.code);
+
+      // Obtener el player (si no es host)
+      const player = isHost ? null : lobby.players.find((p) => p.id === playerId);
+      const playerName = isHost ? 'Host' : (player?.name || 'Jugador');
+
+      // Enviar confirmación al jugador con el estado actual
+      socket.emit('lobby_rejoined', { 
+        lobby, 
+        playerId,
+        player,
+        isHost
+      });
+
+      // Obtener el estado del juego si está en curso
+      if (lobby.status !== 'waiting' && lobby.gameState) {
+        // Enviar el estado actual del juego
+        socket.emit('game_state_sync', {
+          phase: lobby.gameState.phase,
+          round: lobby.gameState.currentRound,
+          gameState: lobby.gameState,
+        });
+
+        console.log(`${playerName} reconectado al juego en fase ${lobby.gameState.phase}, ronda ${lobby.gameState.currentRound}`);
+      }
+
+      // Notificar a todos los demás que el jugador reconectó
+      if (player) {
+        socket.to(lobby.code).emit('player_reconnected', { player });
+      }
+
+      // Enviar estado actualizado del lobby a todos
+      this.io.to(lobby.code).emit('lobby_updated', { lobby });
+
+      console.log(`${playerName} reconectó al lobby ${lobby.code}`);
     } catch (error) {
       this.handleError(socket, error);
     }
@@ -370,31 +462,57 @@ export class SocketService {
    * Inicia la siguiente ronda o fase
    */
   private handleNextPhase(socket: Socket): void {
+    console.log('🎮 Recibido evento next_phase de socket:', socket.id);
     const session = this.sessions.get(socket.id);
     if (!session) {
+      console.log('❌ Sesión no encontrada para socket:', socket.id);
       socket.emit('error', { message: 'Sesión no encontrada' });
       return;
     }
+    console.log('✅ Sesión encontrada:', session);
 
     try {
       const lobby = this.lobbyService.getLobby(session.lobbyCode);
+      console.log(
+        '📋 Lobby obtenido:',
+        lobby.code,
+        'Host:',
+        lobby.hostId,
+        'Player:',
+        session.playerId
+      );
 
       // Verificar que es el host
       if (lobby.hostId !== session.playerId) {
+        console.log(
+          '❌ No es el host. Host:',
+          lobby.hostId,
+          'Player:',
+          session.playerId
+        );
         socket.emit('error', {
           message: 'Solo el host puede avanzar fases',
           code: ERROR_CODES.NOT_HOST,
         });
         return;
       }
+      console.log('✅ Es el host, continuando...');
 
       if (!lobby.gameState) {
+        console.log('❌ No hay juego activo');
         socket.emit('error', { message: 'No hay juego activo' });
         return;
       }
+      console.log(
+        '✅ Hay juego activo, ronda actual:',
+        lobby.gameState.currentRound
+      );
 
+      console.log('🎯 Llamando progressGamePhase...');
       this.progressGamePhase(lobby.code);
+      console.log('✅ progressGamePhase completado');
     } catch (error) {
+      console.log('❌ Error en handleNextPhase:', error);
       this.handleError(socket, error);
     }
   }
@@ -619,9 +737,9 @@ export class SocketService {
       );
 
       if (!player) {
-        socket.emit('error', { 
+        socket.emit('error', {
           message: 'No se encontró un jugador con ese nombre en el lobby',
-          code: ERROR_CODES.PLAYER_NOT_FOUND
+          code: ERROR_CODES.PLAYER_NOT_FOUND,
         });
         return;
       }
@@ -630,9 +748,9 @@ export class SocketService {
       if (player.isConnected && player.socketId) {
         const previousSocket = this.io.sockets.sockets.get(player.socketId);
         if (previousSocket) {
-          previousSocket.emit('error', { 
+          previousSocket.emit('error', {
             message: 'Te has conectado desde otro dispositivo',
-            code: ERROR_CODES.PLAYER_NOT_FOUND
+            code: ERROR_CODES.PLAYER_NOT_FOUND,
           });
           previousSocket.disconnect(true);
         }
@@ -655,9 +773,9 @@ export class SocketService {
       socket.join(lobbyCode);
 
       // Notificar a otros jugadores que el jugador se reconectó
-      socket.to(lobbyCode).emit('player_reconnected', { 
+      socket.to(lobbyCode).emit('player_reconnected', {
         playerId: player.id,
-        playerName: player.name
+        playerName: player.name,
       });
 
       // Enviar estado actual al jugador reconectado
@@ -670,7 +788,9 @@ export class SocketService {
       // Notificar actualización del lobby
       this.io.to(lobbyCode).emit('lobby_updated', { lobby });
 
-      console.log(`Jugador ${player.name} (${player.id}) reconectado por nombre al lobby ${lobbyCode}`);
+      console.log(
+        `Jugador ${player.name} (${player.id}) reconectado por nombre al lobby ${lobbyCode}`
+      );
     } catch (error) {
       this.handleError(socket, error);
     }
@@ -716,26 +836,36 @@ export class SocketService {
   private progressGamePhase(lobbyCode: string): void {
     try {
       const lobby = this.lobbyService.getLobby(lobbyCode);
-      if (!lobby.gameState) return;
+      if (!lobby.gameState) {
+        console.log('❌ No hay gameState');
+        return;
+      }
 
       const phase = lobby.gameState.phase;
+      console.log(`📍 Fase actual: ${phase}, avanzando...`);
 
       switch (phase) {
         case 'waiting':
         case 'results':
           // Iniciar nueva ronda
+          console.log('🎯 Iniciando nueva ronda...');
           this.startNextRound(lobbyCode);
           break;
 
         case 'writing':
           // Pasar a votación
+          console.log('🎯 Iniciando votación...');
           this.startVotingPhase(lobbyCode);
           break;
 
         case 'voting':
           // Mostrar resultados
+          console.log('🎯 Mostrando resultados...');
           this.showRoundResults(lobbyCode);
           break;
+
+        default:
+          console.log(`⚠️ Fase desconocida: ${phase}`);
       }
     } catch (error) {
       console.error('Error progresando fase del juego:', error);
@@ -747,36 +877,53 @@ export class SocketService {
    */
   private startNextRound(lobbyCode: string): void {
     try {
+      console.log(`🎯 startNextRound llamado para lobby ${lobbyCode}`);
       const lobby = this.lobbyService.getLobby(lobbyCode);
-      if (!lobby.gameState) return;
+      if (!lobby.gameState) {
+        console.log('❌ No hay gameState en startNextRound');
+        return;
+      }
+
+      console.log(
+        `📍 Fase actual en startNextRound: ${lobby.gameState.phase}, Ronda: ${lobby.gameState.currentRound}`
+      );
 
       // Si venimos de 'results', incrementar el número de ronda
       if (lobby.gameState.phase === 'results') {
         lobby.gameState.currentRound++;
+        console.log(`➕ Incrementada ronda a: ${lobby.gameState.currentRound}`);
       }
 
       // Verificar si el juego ha terminado
       if (this.gameService.isGameFinished(lobby)) {
+        console.log('🏁 Juego terminado, emitiendo game_finished');
         const result = this.gameService.finishGame(lobby);
         this.io.to(lobbyCode).emit('game_finished', result);
         return;
       }
 
+      console.log(`🎲 Iniciando ronda ${lobby.gameState.currentRound}...`);
       const round = this.gameService.startRound(
         lobby,
         lobby.gameState.currentRound
       );
 
       // Notificar inicio de ronda
-      this.io.to(lobbyCode).emit('round_started', {
+      console.log(
+        `📤 Emitiendo round_started para ronda ${lobby.gameState.currentRound} al room ${lobbyCode}`
+      );
+      const emitResult = this.io.to(lobbyCode).emit('round_started', {
         round,
         gameState: lobby.gameState,
         timeRemaining: lobby.settings.answerTimeSeconds,
       } as any);
+      console.log(`📤 Evento round_started emitido`);
 
+      console.log(`📤 Emitiendo writing_phase`);
       this.io.to(lobbyCode).emit('writing_phase', {
         timeRemaining: 0, // Sin timer - control manual
       });
+      console.log('✅ startNextRound completado');
     } catch (error) {
       console.error('Error iniciando ronda:', error);
     }
@@ -787,15 +934,20 @@ export class SocketService {
    */
   private startVotingPhase(lobbyCode: string): void {
     try {
+      console.log(`🎯 startVotingPhase llamado para lobby ${lobbyCode}`);
       const lobby = this.lobbyService.getLobby(lobbyCode);
 
+      console.log(`📋 Preparando opciones de votación...`);
       const options = this.gameService.prepareVotingOptions(lobby);
+      console.log(`📋 ${options.length} opciones preparadas`);
 
       // Notificar fase de votación
+      console.log(`📤 Emitiendo voting_phase con ${options.length} opciones`);
       this.io.to(lobbyCode).emit('voting_phase', {
         options,
         timeRemaining: 0, // Sin timer - control manual
       });
+      console.log('✅ startVotingPhase completado');
     } catch (error) {
       console.error('Error iniciando votación:', error);
     }

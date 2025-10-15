@@ -13,8 +13,8 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   maxRounds: 8, // 8 preguntas de Fabrizio
   answerTimeSeconds: 30,
   voteTimeSeconds: 20,
-  pointsCorrectAnswer: 100,
-  pointsConfuseOpponent: 150,
+  pointsCorrectAnswer: 100, // +100 por acertar la respuesta correcta
+  pointsConfuseOpponent: 50, // +50 por cada oponente que vote tu respuesta falsa
 };
 
 /**
@@ -22,8 +22,10 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
  */
 export const LOBBY_CODE_LENGTH = 6;
 export const LOBBY_CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-export const MAX_PLAYERS_PER_LOBBY = 8;
-export const MIN_PLAYERS_TO_START = 2;
+export const MAX_PLAYERS_PER_LOBBY = 100; // Sin límite práctico (ilimitado público)
+export const MAX_ACTIVE_PLAYERS_PER_TEAM = 2; // 2 jugadores activos por equipo
+export const MIN_ACTIVE_PLAYERS_TO_START = 2; // Mínimo 1 por equipo (2 total)
+export const MIN_PLAYERS_TO_START = 2; // Para compatibilidad
 export const MAX_LOBBIES = 100;
 export const LOBBY_EXPIRY_HOURS = 2;
 

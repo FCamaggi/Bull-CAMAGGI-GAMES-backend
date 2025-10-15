@@ -432,13 +432,24 @@ export class GameService {
       throw new GameError('No hay ronda activa', ERROR_CODES.INVALID_PHASE);
     }
 
-    // Todos los jugadores pueden votar (incluyendo los que respondieron)
+    // TODOS los jugadores pueden votar: activos + espectadores (nueva mecánica)
 
     // Verificar que la opción existe
     const option = currentRound.options.find((o) => o.id === optionId);
     if (!option) {
       throw new GameError(
         'Opción de voto inválida',
+        ERROR_CODES.VALIDATION_ERROR
+      );
+    }
+
+    // Evitar auto-voto: un jugador no puede votar por su propia respuesta
+    if (
+      option.origin.type === 'player' &&
+      option.origin.playerId === playerId
+    ) {
+      throw new GameError(
+        'No puedes votar por tu propia respuesta',
         ERROR_CODES.VALIDATION_ERROR
       );
     }

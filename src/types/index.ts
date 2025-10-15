@@ -8,6 +8,9 @@ export type LobbyStatus = 'waiting' | 'playing' | 'finished';
 // Equipos disponibles
 export type Team = 'blue' | 'red';
 
+// Roles de jugador
+export type PlayerRole = 'active' | 'spectator';
+
 // Estados de una ronda
 export type RoundStatus = 'answering' | 'voting' | 'finished';
 
@@ -16,10 +19,11 @@ export interface Player {
   id: string; // UUID único
   name: string; // Nombre del jugador
   team?: Team; // Equipo seleccionado (opcional hasta que elija)
+  role: PlayerRole; // 'active' = jugador activo (escribe), 'spectator' = espectador (solo vota)
   isHost: boolean; // Si es el host del lobby
   socketId: string; // ID de la conexión WebSocket
   score: number; // Puntuación actual
-  isReady: boolean; // Si está listo para comenzar
+  isReady: boolean; // Si está listo para comenzar (solo activos)
   isConnected: boolean; // Estado de conexión
 }
 
@@ -173,7 +177,11 @@ export interface ServerToClientEvents {
 
   // Eventos de conexión
   pong: () => void;
-  reconnected: (data: { lobby: Lobby; gameState?: BullGameState; playerId?: string }) => void;
+  reconnected: (data: {
+    lobby: Lobby;
+    gameState?: BullGameState;
+    playerId?: string;
+  }) => void;
   player_reconnected: (data: { playerId: string; playerName: string }) => void;
 }
 

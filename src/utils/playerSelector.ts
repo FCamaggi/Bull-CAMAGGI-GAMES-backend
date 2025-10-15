@@ -36,7 +36,7 @@ export class PlayerSelector {
     });
 
     this.updateFactors();
-    
+
     console.log('🎯 PlayerSelector inicializado:');
     console.log('📊 Estadísticas iniciales:', this.getStats());
   }
@@ -60,29 +60,30 @@ export class PlayerSelector {
     );
     console.log(
       '🔵 Jugadores azules recibidos:',
-      bluePlayers.map((p) => ({ name: p.name, id: p.id }))
+      bluePlayers.map((p) => ({ name: p.name, id: p.id, role: p.role }))
     );
     console.log(
       '🔴 Jugadores rojos recibidos:',
-      redPlayers.map((p) => ({ name: p.name, id: p.id }))
+      redPlayers.map((p) => ({ name: p.name, id: p.id, role: p.role }))
     );
     console.log('👑 Host ID:', hostId);
 
-    // Filtrar jugadores para excluir al host
-    const eligibleBluePlayers = hostId
-      ? bluePlayers.filter((p) => p.id !== hostId)
-      : bluePlayers;
-    const eligibleRedPlayers = hostId
-      ? redPlayers.filter((p) => p.id !== hostId)
-      : redPlayers;
+    // Filtrar jugadores: solo activos (que escriben respuestas)
+    // El host nunca está en los equipos, pero por seguridad mantenemos el filtro
+    const eligibleBluePlayers = bluePlayers.filter(
+      (p) => p.role === 'active' && (!hostId || p.id !== hostId)
+    );
+    const eligibleRedPlayers = redPlayers.filter(
+      (p) => p.role === 'active' && (!hostId || p.id !== hostId)
+    );
 
     console.log(
-      '✅ Jugadores azules elegibles:',
-      eligibleBluePlayers.map((p) => ({ name: p.name, id: p.id }))
+      '✅ Jugadores azules elegibles (active):',
+      eligibleBluePlayers.map((p) => ({ name: p.name, id: p.id, role: p.role }))
     );
     console.log(
-      '✅ Jugadores rojos elegibles:',
-      eligibleRedPlayers.map((p) => ({ name: p.name, id: p.id }))
+      '✅ Jugadores rojos elegibles (active):',
+      eligibleRedPlayers.map((p) => ({ name: p.name, id: p.id, role: p.role }))
     );
 
     // Verificar que tengamos jugadores elegibles
@@ -151,7 +152,13 @@ export class PlayerSelector {
     console.log(`🎯 PlayerSelector - Selección para equipo ${team}:`);
     probabilities.forEach((prob, i) => {
       const participation = this.participationHistory.get(prob.player.id);
-      console.log(`  ${i + 1}. ${prob.player.name}: ${(prob.probability * 100).toFixed(1)}% (jugó ${participation?.timesPlayed || 0} veces, factor: ${prob.factor})`);
+      console.log(
+        `  ${i + 1}. ${prob.player.name}: ${(prob.probability * 100).toFixed(
+          1
+        )}% (jugó ${participation?.timesPlayed || 0} veces, factor: ${
+          prob.factor
+        })`
+      );
     });
 
     // Selección por ruleta (weighted random selection)
@@ -159,11 +166,15 @@ export class PlayerSelector {
     let accumulator = 0;
 
     console.log(`🎲 Random generado: ${(random * 100).toFixed(1)}%`);
-    
+
     for (const prob of probabilities) {
       accumulator += prob.probability;
       if (random <= accumulator) {
-        console.log(`✅ Seleccionado: ${prob.player.name} (acumulado: ${(accumulator * 100).toFixed(1)}%)`);
+        console.log(
+          `✅ Seleccionado: ${prob.player.name} (acumulado: ${(
+            accumulator * 100
+          ).toFixed(1)}%)`
+        );
         return prob.player;
       }
     }
@@ -246,14 +257,17 @@ export class PlayerSelector {
   getStats(): any {
     const allParticipations = Array.from(this.participationHistory.values());
     const totalFactor = allParticipations.reduce((sum, p) => sum + p.factor, 0);
-    
+
     const stats = Array.from(this.participationHistory.entries()).map(
       ([playerId, participation]) => ({
         playerId,
         timesPlayed: participation.timesPlayed,
         lastRoundPlayed: participation.lastRoundPlayed,
         factor: participation.factor,
-        probability: totalFactor > 0 ? (participation.factor / totalFactor * 100).toFixed(1) + '%' : '0%',
+        probability:
+          totalFactor > 0
+            ? ((participation.factor / totalFactor) * 100).toFixed(1) + '%'
+            : '0%',
       })
     );
 

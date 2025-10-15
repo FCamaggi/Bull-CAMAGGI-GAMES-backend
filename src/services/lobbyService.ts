@@ -8,6 +8,7 @@ import { generateUUID, isOlderThan } from '../utils/helpers';
 import {
   DEFAULT_GAME_SETTINGS,
   MAX_PLAYERS_PER_LOBBY,
+  MAX_ACTIVE_PLAYERS_PER_TEAM,
   MIN_PLAYERS_TO_START,
   LOBBY_EXPIRY_HOURS,
   ERROR_CODES,
@@ -145,6 +146,7 @@ export class LobbyService {
       score: 0,
       isReady: false,
       isConnected: true,
+      role: 'spectator', // Por defecto espectador, se asigna 'active' al seleccionar equipo
     };
 
     lobby.players.push(newPlayer);
@@ -224,13 +226,14 @@ export class LobbyService {
       );
     }
 
-    // Verificar capacidad del equipo (máximo 4 por equipo)
-    if (lobby.teams[team].length >= 4) {
-      throw new LobbyError(
-        `El equipo ${team} está lleno`,
-        ERROR_CODES.LOBBY_FULL
-      );
-    }
+    // Contar jugadores activos actuales en el equipo objetivo
+    const activePlayersInTeam = lobby.teams[team].filter(
+      (p) => p.role === 'active'
+    ).length;
+
+    // Verificar capacidad del equipo (sin límite de espectadores)
+    // Solo importa si hay espacio para jugador activo
+    const willBeActive = activePlayersInTeam < MAX_ACTIVE_PLAYERS_PER_TEAM;
 
     // Remover del equipo anterior si tenía uno
     if (player.team) {
@@ -239,13 +242,14 @@ export class LobbyService {
       );
     }
 
-    // Añadir al nuevo equipo
+    // Asignar rol basado en disponibilidad
+    player.role = willBeActive ? 'active' : 'spectator';
     player.team = team;
     lobby.teams[team].push(player);
     lobby.lastActivity = new Date();
 
     console.log(
-      `Jugador ${player.name} seleccionó equipo ${team} en lobby ${code}`
+      `Jugador ${player.name} seleccionó equipo ${team} en lobby ${code} como ${player.role} (${activePlayersInTeam} activos actuales)`
     );
 
     return lobby;
@@ -253,6 +257,7 @@ export class LobbyService {
 
   /**
    * Toggle del estado ready de un jugador
+   * Solo jugadores activos pueden marcar ready
    */
   toggleReady(code: string, playerId: string): Lobby {
     const lobby = this.getLobby(code);
@@ -262,6 +267,14 @@ export class LobbyService {
       throw new LobbyError(
         'No se puede cambiar el estado ready después de que el juego haya comenzado',
         ERROR_CODES.GAME_ALREADY_STARTED
+      );
+    }
+
+    // Solo jugadores activos pueden marcar ready
+    if (player.role !== 'active') {
+      throw new LobbyError(
+        'Solo los jugadores activos pueden marcar ready',
+        ERROR_CODES.VALIDATION_ERROR
       );
     }
 
@@ -328,20 +341,28 @@ export class LobbyService {
       };
     }
 
-    // Verificar que ambos equipos tengan jugadores
-    if (lobby.teams.blue.length === 0 || lobby.teams.red.length === 0) {
+    // Verificar que ambos equipos tengan al menos 1 jugador activo
+    const activeBlue = lobby.teams.blue.filter((p) => p.role === 'active');
+    const activeRed = lobby.teams.red.filter((p) => p.role === 'active');
+
+    if (activeBlue.length === 0 || activeRed.length === 0) {
       return {
         canStart: false,
-        reason: 'Ambos equipos deben tener al menos un jugador',
+        reason: 'Ambos equipos deben tener al menos un jugador activo',
       };
     }
 
-    // Verificar que todos los jugadores estén listos
-    const notReadyPlayers = lobby.players.filter((p) => !p.isReady);
-    if (notReadyPlayers.length > 0) {
+    // Verificar que todos los jugadores ACTIVOS estén listos
+    // Los espectadores pueden unirse en cualquier momento sin bloquear el inicio
+    const activePlayers = lobby.players.filter((p) => p.role === 'active');
+    const notReadyActivePlayers = activePlayers.filter((p) => !p.isReady);
+
+    if (notReadyActivePlayers.length > 0) {
       return {
         canStart: false,
-        reason: `Esperando a: ${notReadyPlayers.map((p) => p.name).join(', ')}`,
+        reason: `Esperando jugadores activos: ${notReadyActivePlayers
+          .map((p) => p.name)
+          .join(', ')}`,
       };
     }
 
