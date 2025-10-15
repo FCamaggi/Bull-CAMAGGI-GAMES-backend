@@ -102,6 +102,22 @@ class BullServer {
    * Configura rutas HTTP
    */
   private setupRoutes(): void {
+    // Ruta raíz - información del servidor
+    this.app.get('/', (req, res) => {
+      res.json({
+        name: 'Bull Game Backend API',
+        version: '1.0.0',
+        status: 'running',
+        frontend: 'https://bull-camaggi-games.netlify.app',
+        endpoints: {
+          health: '/health',
+          stats: '/api/stats',
+          websocket: 'ws://bull-game-backend.onrender.com'
+        },
+        timestamp: new Date().toISOString(),
+      });
+    });
+
     // Health check
     this.app.get('/health', (req, res) => {
       const stats = this.socketService ? this.socketService.getStats() : {};
@@ -122,14 +138,31 @@ class BullServer {
       return res.json(this.socketService.getStats());
     });
 
-    // Servir archivos estáticos del frontend (en producción)
-    if (process.env.NODE_ENV === 'production') {
+    // Servir archivos estáticos del frontend (solo en desarrollo local)
+    // En producción, el frontend está desplegado separadamente en Netlify
+    if (process.env.NODE_ENV !== 'production') {
       const frontendPath = path.join(__dirname, '../../frontend/dist');
+      
+      // Intentar servir archivos estáticos
       this.app.use(express.static(frontendPath));
 
       // Catch-all handler para SPA
-      this.app.get('*', (req, res) => {
-        res.sendFile(path.join(frontendPath, 'index.html'));
+      this.app.get('*', (req, res, next) => {
+        // Si es una ruta de API o health, pasar al siguiente handler
+        if (req.path.startsWith('/api') || 
+            req.path.startsWith('/health') || 
+            req.path === '/') {
+          return next();
+        }
+        
+        res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
+          if (err) {
+            res.status(404).json({ 
+              message: 'Frontend no disponible en este servidor',
+              frontend_url: 'https://bull-camaggi-games.netlify.app'
+            });
+          }
+        });
       });
     }
 
