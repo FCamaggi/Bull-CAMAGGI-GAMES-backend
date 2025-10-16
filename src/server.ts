@@ -112,7 +112,7 @@ class BullServer {
         endpoints: {
           health: '/health',
           stats: '/api/stats',
-          websocket: 'ws://bull-game-backend.onrender.com'
+          websocket: 'ws://bull-game-backend.onrender.com',
         },
         timestamp: new Date().toISOString(),
       });
@@ -142,24 +142,26 @@ class BullServer {
     // En producción, el frontend está desplegado separadamente en Netlify
     if (process.env.NODE_ENV !== 'production') {
       const frontendPath = path.join(__dirname, '../../frontend/dist');
-      
+
       // Intentar servir archivos estáticos
       this.app.use(express.static(frontendPath));
 
       // Catch-all handler para SPA
       this.app.get('*', (req, res, next) => {
         // Si es una ruta de API o health, pasar al siguiente handler
-        if (req.path.startsWith('/api') || 
-            req.path.startsWith('/health') || 
-            req.path === '/') {
+        if (
+          req.path.startsWith('/api') ||
+          req.path.startsWith('/health') ||
+          req.path === '/'
+        ) {
           return next();
         }
-        
+
         res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
           if (err) {
-            res.status(404).json({ 
+            res.status(404).json({
               message: 'Frontend no disponible en este servidor',
-              frontend_url: 'https://bull-camaggi-games.netlify.app'
+              frontend_url: 'https://bull-camaggi-games.netlify.app',
             });
           }
         });

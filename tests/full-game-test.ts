@@ -110,28 +110,32 @@ function createSocket(name: string): Socket {
 
   // Listeners globales para capturar todos los eventos del juego
   socket.on('round_started', (data: any) => {
-    if (name === 'Alice') { // Solo logear una vez
+    if (name === 'Alice') {
+      // Solo logear una vez
       log(`   ✅ round_started recibido por todos`, 'green');
     }
     lastRoundStarted = data;
   });
 
   socket.on('voting_phase', (data: any) => {
-    if (name === 'Alice') { // Solo logear una vez
+    if (name === 'Alice') {
+      // Solo logear una vez
       log(`   ✅ voting_phase recibido por todos`, 'green');
     }
     lastVotingStarted = data;
   });
 
   socket.on('round_results', (data: any) => {
-    if (name === 'Alice') { // Solo logear una vez
+    if (name === 'Alice') {
+      // Solo logear una vez
       log(`   ✅ round_results recibido por todos`, 'green');
     }
     lastRoundResults = data;
   });
 
   socket.on('game_finished', (data: any) => {
-    if (name === 'Alice') { // Solo logear una vez
+    if (name === 'Alice') {
+      // Solo logear una vez
       log(`   ✅ game_finished recibido por todos`, 'green');
     }
     lastGameFinished = data;
@@ -590,16 +594,16 @@ async function phaseResults(roundNumber: number): Promise<void> {
   }
 
   const data = lastRoundResults;
-  
+
   if (data.results) {
     const results = data.results;
     log(`   ❓ Pregunta: ${results.question}`, 'cyan');
-    
+
     // Contar votos correctos e incorrectos
     const votes = results.votes || {};
     let correctVotes = 0;
     let incorrectVotes = 0;
-    
+
     Object.entries(votes).forEach(([playerId, voteData]: [string, any]) => {
       const player = gameState.players.find((p) => p.id === playerId);
       if (player) {
@@ -612,9 +616,12 @@ async function phaseResults(roundNumber: number): Promise<void> {
         }
       }
     });
-    
-    log(`   📊 Resumen: ${correctVotes} correctos, ${incorrectVotes} incorrectos`, 'bright');
-    
+
+    log(
+      `   📊 Resumen: ${correctVotes} correctos, ${incorrectVotes} incorrectos`,
+      'bright'
+    );
+
     // Mostrar si hay puntuación de equipos
     if (data.newScores) {
       log(`   📊 Puntos Azul: ${data.newScores.blue}`, 'blue');

@@ -84,7 +84,10 @@ function createSocket(name: string): Socket {
   });
 
   socket.on('error', (data: any) => {
-    log(`⚠️ ${name} recibió error: ${data.message || JSON.stringify(data)}`, 'yellow');
+    log(
+      `⚠️ ${name} recibió error: ${data.message || JSON.stringify(data)}`,
+      'yellow'
+    );
     lastError = data;
   });
 
@@ -121,7 +124,11 @@ async function test1_HostReconnection(): Promise<void> {
       hostSocket.once('lobby_created', (data: any) => {
         gameState.lobbyCode = data.lobby.code;
         gameState.hostId = data.playerId;
-        gameState.host = { socket: hostSocket, name: 'Host', id: data.playerId };
+        gameState.host = {
+          socket: hostSocket,
+          name: 'Host',
+          id: data.playerId,
+        };
         log(`✅ Lobby creado: ${data.lobby.code}`, 'green');
         resolve();
       });
@@ -133,7 +140,10 @@ async function test1_HostReconnection(): Promise<void> {
     await sleep(500);
 
     await new Promise<void>((resolve) => {
-      player1.emit('join_lobby', { code: gameState.lobbyCode, playerName: 'Player1' });
+      player1.emit('join_lobby', {
+        code: gameState.lobbyCode,
+        playerName: 'Player1',
+      });
       player1.once('lobby_joined', () => {
         log('✅ Player1 se unió', 'green');
         resolve();
@@ -156,10 +166,13 @@ async function test1_HostReconnection(): Promise<void> {
         code: gameState.lobbyCode,
         playerId: gameState.hostId,
       });
-      
+
       hostSocket.once('lobby_rejoined', (data: any) => {
         log('✅ Host reconectado exitosamente', 'green');
-        log(`   Lobby: ${data.lobby.code}, Players: ${data.lobby.players.length}`, 'cyan');
+        log(
+          `   Lobby: ${data.lobby.code}, Players: ${data.lobby.players.length}`,
+          'cyan'
+        );
         resolve();
       });
 
@@ -340,7 +353,10 @@ async function test3_NonSelectedPlayerTriesToWrite(): Promise<void> {
       const selectedRed = round.selectedPlayers?.red?.name;
 
       log(`✅ Ronda iniciada`, 'green');
-      log(`   Seleccionados: ${selectedBlue} (azul), ${selectedRed} (rojo)`, 'cyan');
+      log(
+        `   Seleccionados: ${selectedBlue} (azul), ${selectedRed} (rojo)`,
+        'cyan'
+      );
 
       // Encontrar un jugador NO seleccionado
       const notSelectedPlayer = playersData.find(
@@ -348,10 +364,15 @@ async function test3_NonSelectedPlayerTriesToWrite(): Promise<void> {
       );
 
       if (notSelectedPlayer) {
-        log(`\n🧪 Jugador NO seleccionado (${notSelectedPlayer.name}) intenta escribir...`, 'yellow');
+        log(
+          `\n🧪 Jugador NO seleccionado (${notSelectedPlayer.name}) intenta escribir...`,
+          'yellow'
+        );
         lastError = null;
 
-        notSelectedPlayer.socket.emit('submit_answer', { answer: 'Intento no autorizado' });
+        notSelectedPlayer.socket.emit('submit_answer', {
+          answer: 'Intento no autorizado',
+        });
         await sleep(1000);
 
         if (lastError && lastError.message?.includes('seleccionado')) {
@@ -404,7 +425,10 @@ async function test4_SelfVoting(): Promise<void> {
 
     for (const playerData of playersData) {
       await new Promise<void>((resolve) => {
-        playerData.socket.emit('join_lobby', { code: gameState.lobbyCode, playerName: playerData.name });
+        playerData.socket.emit('join_lobby', {
+          code: gameState.lobbyCode,
+          playerName: playerData.name,
+        });
         playerData.socket.once('lobby_joined', () => {
           playerData.socket.emit('select_team', { team: playerData.team });
           setTimeout(resolve, 200);
@@ -444,13 +468,19 @@ async function test4_SelfVoting(): Promise<void> {
 
         // Encontrar opción del jugador azul
         const blueOption = options.find(
-          (opt: any) => opt.origin?.type === 'player' && opt.text === 'Respuesta azul'
+          (opt: any) =>
+            opt.origin?.type === 'player' && opt.text === 'Respuesta azul'
         );
 
         if (blueOption) {
-          log(`\n🧪 Jugador azul intenta votar por su propia respuesta...`, 'yellow');
+          log(
+            `\n🧪 Jugador azul intenta votar por su propia respuesta...`,
+            'yellow'
+          );
           lastError = null;
-          playersData[0].socket.emit('submit_vote', { optionId: blueOption.id });
+          playersData[0].socket.emit('submit_vote', {
+            optionId: blueOption.id,
+          });
           await sleep(1000);
 
           if (lastError) {
@@ -505,7 +535,10 @@ async function test5_DoubleVoting(): Promise<void> {
 
     for (const playerData of playersData) {
       await new Promise<void>((resolve) => {
-        playerData.socket.emit('join_lobby', { code: gameState.lobbyCode, playerName: playerData.name });
+        playerData.socket.emit('join_lobby', {
+          code: gameState.lobbyCode,
+          playerName: playerData.name,
+        });
         playerData.socket.once('lobby_joined', () => {
           playerData.socket.emit('select_team', { team: playerData.team });
           setTimeout(resolve, 200);
@@ -532,11 +565,11 @@ async function test5_DoubleVoting(): Promise<void> {
       // Jugadores seleccionados escriben
       const selectedBlue = lastRoundStarted.round.selectedPlayers?.blue?.name;
       const selectedRed = lastRoundStarted.round.selectedPlayers?.red?.name;
-      
+
       // Encontrar y usar los sockets seleccionados
-      const bluePlayer = playersData.find(p => p.name === selectedBlue);
-      const redPlayer = playersData.find(p => p.name === selectedRed);
-      
+      const bluePlayer = playersData.find((p) => p.name === selectedBlue);
+      const redPlayer = playersData.find((p) => p.name === selectedRed);
+
       if (bluePlayer && redPlayer) {
         bluePlayer.socket.emit('submit_answer', { answer: 'Blue answer' });
         redPlayer.socket.emit('submit_answer', { answer: 'Red answer' });
@@ -557,7 +590,10 @@ async function test5_DoubleVoting(): Promise<void> {
         playersData[4].socket.emit('submit_vote', { optionId: options[0].id });
         await sleep(500);
 
-        log(`🧪 Espectador intenta votar nuevamente por segunda opción...`, 'yellow');
+        log(
+          `🧪 Espectador intenta votar nuevamente por segunda opción...`,
+          'yellow'
+        );
         lastError = null;
         playersData[4].socket.emit('submit_vote', { optionId: options[1].id });
         await sleep(1000);
@@ -614,7 +650,10 @@ async function test6_ReconnectDuringVoting(): Promise<void> {
 
     for (const playerData of playersData) {
       await new Promise<void>((resolve) => {
-        playerData.socket.emit('join_lobby', { code: gameState.lobbyCode, playerName: playerData.name });
+        playerData.socket.emit('join_lobby', {
+          code: gameState.lobbyCode,
+          playerName: playerData.name,
+        });
         playerData.socket.once('lobby_joined', (data: any) => {
           if (playerData.name === 'Spectator6') {
             spectatorId = data.playerId;
@@ -643,10 +682,10 @@ async function test6_ReconnectDuringVoting(): Promise<void> {
       // Jugadores seleccionados escriben
       const selectedBlue = lastRoundStarted.round.selectedPlayers?.blue?.name;
       const selectedRed = lastRoundStarted.round.selectedPlayers?.red?.name;
-      
-      const bluePlayer = playersData.find(p => p.name === selectedBlue);
-      const redPlayer = playersData.find(p => p.name === selectedRed);
-      
+
+      const bluePlayer = playersData.find((p) => p.name === selectedBlue);
+      const redPlayer = playersData.find((p) => p.name === selectedRed);
+
       if (bluePlayer && redPlayer) {
         bluePlayer.socket.emit('submit_answer', { answer: 'Blue' });
         redPlayer.socket.emit('submit_answer', { answer: 'Red' });
@@ -680,7 +719,9 @@ async function test6_ReconnectDuringVoting(): Promise<void> {
       await sleep(1000);
 
       if (lastVotingPhase.options && lastVotingPhase.options.length > 0) {
-        playersData[4].socket.emit('submit_vote', { optionId: lastVotingPhase.options[0].id });
+        playersData[4].socket.emit('submit_vote', {
+          optionId: lastVotingPhase.options[0].id,
+        });
         await sleep(1000);
         log('✅ Voto enviado después de reconexión', 'green');
       }

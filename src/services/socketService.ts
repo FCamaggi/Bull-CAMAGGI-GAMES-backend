@@ -232,7 +232,7 @@ export class SocketService {
 
       // Verificar si es el host
       const isHost = lobby.hostId === playerId;
-      
+
       if (isHost) {
         // Actualizar socket ID del host
         lobby.hostSocketId = socket.id;
@@ -263,15 +263,17 @@ export class SocketService {
       await socket.join(lobby.code);
 
       // Obtener el player (si no es host)
-      const player = isHost ? null : lobby.players.find((p) => p.id === playerId);
-      const playerName = isHost ? 'Host' : (player?.name || 'Jugador');
+      const player = isHost
+        ? null
+        : lobby.players.find((p) => p.id === playerId);
+      const playerName = isHost ? 'Host' : player?.name || 'Jugador';
 
       // Enviar confirmación al jugador con el estado actual
-      socket.emit('lobby_rejoined', { 
-        lobby, 
+      socket.emit('lobby_rejoined', {
+        lobby,
         playerId,
         player,
-        isHost
+        isHost,
       });
 
       // Obtener el estado del juego si está en curso
@@ -283,7 +285,9 @@ export class SocketService {
           gameState: lobby.gameState,
         });
 
-        console.log(`${playerName} reconectado al juego en fase ${lobby.gameState.phase}, ronda ${lobby.gameState.currentRound}`);
+        console.log(
+          `${playerName} reconectado al juego en fase ${lobby.gameState.phase}, ronda ${lobby.gameState.currentRound}`
+        );
       }
 
       // Notificar a todos los demás que el jugador reconectó
