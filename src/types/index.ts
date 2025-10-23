@@ -117,7 +117,7 @@ export interface ClientToServerEvents {
   create_lobby: (data: { playerName: string }) => void;
   join_lobby: (data: { code: string; playerName: string }) => void;
   leave_lobby: () => void;
-  select_team: (data: { team: Team }) => void;
+  select_team: (data: { team: Team; role?: PlayerRole }) => void;
   ready_toggle: () => void;
 
   // Eventos de juego (solo host)

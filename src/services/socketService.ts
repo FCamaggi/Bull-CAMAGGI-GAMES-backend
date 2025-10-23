@@ -342,15 +342,28 @@ export class SocketService {
   /**
    * Un jugador selecciona su equipo
    */
-  private handleSelectTeam(socket: Socket, data: { team: Team }): void {
+  private handleSelectTeam(socket: Socket, data: { team: Team; role?: 'active' | 'spectator' }): void {
     const session = this.sessions.get(socket.id);
+    
+    console.log('🎯 handleSelectTeam recibido:', {
+      socketId: socket.id,
+      hasSession: !!session,
+      team: data.team,
+      role: data.role,
+      sessionData: session ? {
+        playerId: session.playerId,
+        lobbyCode: session.lobbyCode
+      } : null
+    });
+    
     if (!session) {
-      socket.emit('error', { message: 'Sesión no encontrada' });
+      console.error('❌ Sesión no encontrada para socket:', socket.id);
+      socket.emit('error', { message: 'Sesión no encontrada', code: 'SESSION_NOT_FOUND' });
       return;
     }
 
     try {
-      const { team } = data;
+      const { team, role } = data;
 
       if (team !== 'blue' && team !== 'red') {
         socket.emit('error', {
@@ -363,16 +376,25 @@ export class SocketService {
       const lobby = this.lobbyService.selectTeam(
         session.lobbyCode,
         session.playerId,
-        team
+        team,
+        role
       );
 
       // Actualizar última actividad
       session.lastSeen = new Date();
+      
+      console.log('✅ Equipo seleccionado exitosamente:', {
+        playerId: session.playerId,
+        team,
+        role,
+        lobbyCode: lobby.code
+      });
 
       // Notificar a todos en el lobby
       this.io.to(lobby.code).emit('team_updated', { teams: lobby.teams });
       this.io.to(lobby.code).emit('lobby_updated', { lobby });
     } catch (error) {
+      console.error('❌ Error en selectTeam:', error);
       this.handleError(socket, error);
     }
   }

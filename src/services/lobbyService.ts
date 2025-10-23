@@ -214,9 +214,9 @@ export class LobbyService {
   }
 
   /**
-   * Un jugador selecciona su equipo
+   * Un jugador selecciona su equipo y rol
    */
-  selectTeam(code: string, playerId: string, team: Team): Lobby {
+  selectTeam(code: string, playerId: string, team: Team, preferredRole?: 'active' | 'spectator'): Lobby {
     const lobby = this.getLobby(code);
     const player = this.getPlayer(lobby, playerId);
 
@@ -238,18 +238,37 @@ export class LobbyService {
     // Determinar el rol que tendrá el jugador
     let assignedRole: 'active' | 'spectator';
     
-    if (activePlayersInTeam < MAX_ACTIVE_PLAYERS_PER_TEAM) {
-      // Hay espacio para jugador activo
-      assignedRole = 'active';
-    } else if (spectatorPlayersInTeam < MAX_SPECTATORS_PER_TEAM) {
-      // No hay espacio para activo, pero sí para espectador
+    // Si el usuario especificó un rol preferido, intentar asignarlo
+    if (preferredRole === 'spectator') {
+      // Usuario quiere ser espectador explícitamente
+      if (spectatorPlayersInTeam >= MAX_SPECTATORS_PER_TEAM) {
+        throw new LobbyError(
+          `El equipo ${team} ya tiene el máximo de espectadores (${MAX_SPECTATORS_PER_TEAM})`,
+          ERROR_CODES.TEAM_FULL
+        );
+      }
       assignedRole = 'spectator';
+    } else if (preferredRole === 'active') {
+      // Usuario quiere ser activo explícitamente
+      if (activePlayersInTeam >= MAX_ACTIVE_PLAYERS_PER_TEAM) {
+        throw new LobbyError(
+          `El equipo ${team} ya tiene el máximo de jugadores activos (${MAX_ACTIVE_PLAYERS_PER_TEAM})`,
+          ERROR_CODES.TEAM_FULL
+        );
+      }
+      assignedRole = 'active';
     } else {
-      // Equipo lleno (4 activos + 8 espectadores)
-      throw new LobbyError(
-        `El equipo ${team} está lleno (4 activos + 8 público)`,
-        ERROR_CODES.TEAM_FULL
-      );
+      // Sin preferencia: asignar automáticamente
+      if (activePlayersInTeam < MAX_ACTIVE_PLAYERS_PER_TEAM) {
+        assignedRole = 'active';
+      } else if (spectatorPlayersInTeam < MAX_SPECTATORS_PER_TEAM) {
+        assignedRole = 'spectator';
+      } else {
+        throw new LobbyError(
+          `El equipo ${team} está lleno (${MAX_ACTIVE_PLAYERS_PER_TEAM} activos + ${MAX_SPECTATORS_PER_TEAM} espectadores)`,
+          ERROR_CODES.TEAM_FULL
+        );
+      }
     }
 
     // Remover del equipo anterior si tenía uno
@@ -272,7 +291,7 @@ export class LobbyService {
     lobby.lastActivity = new Date();
 
     console.log(
-      `Jugador ${player.name} seleccionó equipo ${team} en lobby ${code} como ${assignedRole} (${activePlayersInTeam} activos, ${spectatorPlayersInTeam} espectadores actuales)`
+      `Jugador ${player.name} seleccionó equipo ${team} en lobby ${code} como ${assignedRole} (preferencia: ${preferredRole || 'auto'}, ${activePlayersInTeam} activos, ${spectatorPlayersInTeam} espectadores actuales)`
     );
 
     return lobby;
