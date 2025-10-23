@@ -9,6 +9,7 @@ import {
   DEFAULT_GAME_SETTINGS,
   MAX_PLAYERS_PER_LOBBY,
   MAX_ACTIVE_PLAYERS_PER_TEAM,
+  MAX_SPECTATORS_PER_TEAM,
   MIN_PLAYERS_TO_START,
   LOBBY_EXPIRY_HOURS,
   ERROR_CODES,
@@ -226,14 +227,30 @@ export class LobbyService {
       );
     }
 
-    // Contar jugadores activos actuales en el equipo objetivo
+    // Contar jugadores actuales en el equipo objetivo
     const activePlayersInTeam = lobby.teams[team].filter(
       (p) => p.role === 'active'
     ).length;
+    const spectatorPlayersInTeam = lobby.teams[team].filter(
+      (p) => p.role === 'spectator'
+    ).length;
 
-    // Verificar capacidad del equipo (sin límite de espectadores)
-    // Solo importa si hay espacio para jugador activo
-    const willBeActive = activePlayersInTeam < MAX_ACTIVE_PLAYERS_PER_TEAM;
+    // Determinar el rol que tendrá el jugador
+    let assignedRole: 'active' | 'spectator';
+    
+    if (activePlayersInTeam < MAX_ACTIVE_PLAYERS_PER_TEAM) {
+      // Hay espacio para jugador activo
+      assignedRole = 'active';
+    } else if (spectatorPlayersInTeam < MAX_SPECTATORS_PER_TEAM) {
+      // No hay espacio para activo, pero sí para espectador
+      assignedRole = 'spectator';
+    } else {
+      // Equipo lleno (4 activos + 8 espectadores)
+      throw new LobbyError(
+        `El equipo ${team} está lleno (4 activos + 8 público)`,
+        ERROR_CODES.TEAM_FULL
+      );
+    }
 
     // Remover del equipo anterior si tenía uno
     if (player.team) {
@@ -242,14 +259,20 @@ export class LobbyService {
       );
     }
 
-    // Asignar rol basado en disponibilidad
-    player.role = willBeActive ? 'active' : 'spectator';
+    // Asignar nuevo rol y equipo
+    player.role = assignedRole;
     player.team = team;
+    
+    // Si cambia de activo a espectador (o viceversa), resetear ready
+    if (assignedRole === 'spectator') {
+      player.isReady = false; // Espectadores no marcan ready
+    }
+    
     lobby.teams[team].push(player);
     lobby.lastActivity = new Date();
 
     console.log(
-      `Jugador ${player.name} seleccionó equipo ${team} en lobby ${code} como ${player.role} (${activePlayersInTeam} activos actuales)`
+      `Jugador ${player.name} seleccionó equipo ${team} en lobby ${code} como ${assignedRole} (${activePlayersInTeam} activos, ${spectatorPlayersInTeam} espectadores actuales)`
     );
 
     return lobby;

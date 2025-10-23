@@ -23,7 +23,8 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
 export const LOBBY_CODE_LENGTH = 6;
 export const LOBBY_CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 export const MAX_PLAYERS_PER_LOBBY = 100; // Sin límite práctico (ilimitado público)
-export const MAX_ACTIVE_PLAYERS_PER_TEAM = 2; // 2 jugadores activos por equipo
+export const MAX_ACTIVE_PLAYERS_PER_TEAM = 4; // 4 jugadores activos por equipo
+export const MAX_SPECTATORS_PER_TEAM = 8; // 8 espectadores (público) por equipo
 export const MIN_ACTIVE_PLAYERS_TO_START = 2; // Mínimo 1 por equipo (2 total)
 export const MIN_PLAYERS_TO_START = 2; // Para compatibilidad
 export const MAX_LOBBIES = 100;
@@ -49,6 +50,7 @@ export const RECONNECT_WINDOW_MS = 5 * 60 * 1000; // 5 minutos para reconectarse
 export const ERROR_CODES = {
   LOBBY_NOT_FOUND: 'LOBBY_NOT_FOUND',
   LOBBY_FULL: 'LOBBY_FULL',
+  TEAM_FULL: 'TEAM_FULL',
   PLAYER_NOT_FOUND: 'PLAYER_NOT_FOUND',
   GAME_ALREADY_STARTED: 'GAME_ALREADY_STARTED',
   NOT_HOST: 'NOT_HOST',
