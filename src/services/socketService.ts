@@ -79,8 +79,13 @@ export class SocketService {
     socket.on('join_lobby', (data) => this.handleJoinLobby(socket, data));
     socket.on('rejoin_lobby', (data) => this.handleRejoinLobby(socket, data));
     socket.on('leave_lobby', () => this.handleLeaveLobby(socket));
-    socket.on('select_team', (data) => this.handleSelectTeam(socket, data));
+    socket.on('select_team', (data) => {
+      console.log('🎪 Evento select_team recibido en socket.on, data:', data);
+      this.handleSelectTeam(socket, data);
+    });
     socket.on('ready_toggle', () => this.handleReadyToggle(socket));
+
+    console.log(`✅ Eventos registrados para socket ${socket.id}`);
 
     // Eventos de juego (host)
     socket.on('start_game', (settings) =>
@@ -343,6 +348,11 @@ export class SocketService {
    * Un jugador selecciona su equipo
    */
   private handleSelectTeam(socket: Socket, data: { team: Team; role?: 'active' | 'spectator' }): void {
+    console.log('🚨🚨🚨 handleSelectTeam LLAMADO 🚨🚨🚨');
+    console.log('Socket ID:', socket.id);
+    console.log('Data recibida:', data);
+    console.log('Sesiones actuales:', Array.from(this.sessions.keys()));
+    
     const session = this.sessions.get(socket.id);
     
     console.log('🎯 handleSelectTeam recibido:', {
