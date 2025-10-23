@@ -73,6 +73,12 @@ export class SocketService {
    */
   private handleConnection(socket: Socket): void {
     console.log(`🔌 Nueva conexión WebSocket: ${socket.id}`);
+    console.log(`🚀 Transport: ${socket.conn.transport.name}`);
+    
+    // Log cuando cambia el transport
+    socket.conn.on('upgrade', (transport) => {
+      console.log(`⬆️ Socket ${socket.id} upgraded to ${transport.name}`);
+    });
 
     // Eventos de lobby
     socket.on('create_lobby', (data) => this.handleCreateLobby(socket, data));
@@ -81,6 +87,7 @@ export class SocketService {
     socket.on('leave_lobby', () => this.handleLeaveLobby(socket));
     socket.on('select_team', (data) => {
       console.log('🎪 Evento select_team recibido en socket.on, data:', data);
+      console.log(`🔍 Transport actual: ${socket.conn.transport.name}`);
       this.handleSelectTeam(socket, data);
     });
     socket.on('ready_toggle', () => this.handleReadyToggle(socket));
